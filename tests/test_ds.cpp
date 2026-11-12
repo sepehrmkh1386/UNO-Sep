@@ -6,13 +6,15 @@
 #include "../src/ds/DynamicArray.h"
 #include "../src/ds/DoublyCircularLinkedList.h"
 
+using namespace std;
+
 static int failedChecks = 0;
 
 static void check(bool condition, const char* name) {
     if (condition) {
-        std::cout << "[PASS] " << name << '\n';
+        cout << "[PASS] " << name << '\n';
     } else {
-        std::cout << "[FAIL] " << name << '\n';
+        cout << "[FAIL] " << name << '\n';
         ++failedChecks;
     }
 }
@@ -293,50 +295,50 @@ int main() {
 
     int value = 0;
     list.get(1, value);
-    std::cout << "List: " << value << '\n';
+    cout << "List: " << value << '\n';
 
     CustomStack<int> stack;
     stack.push(10);
     stack.push(20);
     stack.pop(value);
-    std::cout << "Stack: " << value << '\n';
+    cout << "Stack: " << value << '\n';
 
     CustomQueue<int> queue;
     queue.enqueue(10);
     queue.enqueue(20);
     queue.dequeue(value);
-    std::cout << "Queue: " << value << '\n';
+    cout << "Queue: " << value << '\n';
 
     DynamicArray<int> array;
     for (int i = 0; i < 15; ++i) {
         array.add(i);
     }
     array.get(14, value);
-    std::cout << "Array: " << value
-              << ", capacity: " << array.getCapacity() << '\n';
+    cout << "Array: " << value
+         << ", capacity: " << array.getCapacity() << '\n';
 
     DoublyCircularLinkedList<int> circularList;
     circularList.add(10);
     circularList.add(20);
     circularList.add(30);
     circularList.getNext(2, value);
-    std::cout << "Circular list: " << value << '\n';
+    cout << "Circular list: " << value << '\n';
 
-    std::cout << "\n--- SinglyLinkedList tests ---\n";
+    cout << "\n--- SinglyLinkedList tests ---\n";
     testSinglyLinkedList();
 
-    std::cout << "\n--- CustomStack tests ---\n";
+    cout << "\n--- CustomStack tests ---\n";
     testCustomStack();
 
-    std::cout << "\n--- CustomQueue tests ---\n";
+    cout << "\n--- CustomQueue tests ---\n";
     testCustomQueue();
 
-    std::cout << "\n--- DynamicArray tests ---\n";
+    cout << "\n--- DynamicArray tests ---\n";
     testDynamicArray();
 
-    std::cout << "\n--- DoublyCircularLinkedList tests ---\n";
+    cout << "\n--- DoublyCircularLinkedList tests ---\n";
     testDoublyCircularList();
 
-    std::cout << "\nFailed checks: " << failedChecks << '\n';
+    cout << "\nFailed checks: " << failedChecks << '\n';
     return failedChecks == 0 ? 0 : 1;
 }
