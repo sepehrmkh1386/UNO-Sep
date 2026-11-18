@@ -5,9 +5,11 @@
 #include "../ds/DynamicArray.h"
 #include "../model/Card.h"
 #include "../model/Player.h"
+#include "../model/RoundState.h"
 #include "Deck.h"
 #include "RuleManager.h"
 #include "TurnManager.h"
+#include "WeightedRandom.h"
 
 enum class MoveResult {
     Ok,
@@ -15,7 +17,8 @@ enum class MoveResult {
     InvalidMove,
     ColorRequired,
     AwaitingStartColor,
-    RoundOver
+    RoundOver,
+    NotAllowed
 };
 
 class Round {
@@ -29,11 +32,17 @@ private:
     bool awaitingStartColor;
     bool roundOver;
     Player* winner;
+    bool hasDrawn;
+    int lastDrawCount;
+    ChanceMachine chanceMachine;
 
     int drawInto(Player* player, int count);
     void dealCards();
     void placeFirstCard();
     void moveTurnAfter(const Card& card);
+    void endTurn();
+    bool topIsPlusFour() const;
+    MoveResult executePlay(int cardIndex, CardColor chosenColor);
 
 public:
     Round(const DynamicArray<Player*>& seats);
@@ -44,8 +53,16 @@ public:
     void start();
 
     MoveResult playCard(int cardIndex, CardColor chosenColor);
+    MoveResult draw();
+    MoveResult playDrawn(CardColor chosenColor);
+    MoveResult pass();
+    MoveResult chance();
+    MoveResult chanceWithRoll(int roll);
+    MoveResult applyAction(const Action& action);
+
     bool setStartColor(CardColor color);
     void setTopCard(const Card& card);
+    void leaveOneCardInDeck();
 
     Player* getCurrentPlayer() const;
     Player* getPlayerAt(int seat) const;
@@ -57,8 +74,11 @@ public:
     int getDiscardSize() const;
     bool isClockwise() const;
     bool needsStartColor() const;
+    bool hasDrawnCard() const;
+    int getLastDrawCount() const;
     bool isOver() const;
     Player* getWinner() const;
+    RoundState getState() const;
 };
 
 #endif

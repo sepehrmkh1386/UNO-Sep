@@ -1,11 +1,15 @@
 #include "Round.h"
+#include "Random.h"
+#include "Recursion.h"
 
 Round::Round(const DynamicArray<Player*>& seats)
     : pendingPenalty(0),
       activeColor(CardColor::None),
       awaitingStartColor(false),
       roundOver(false),
-      winner(nullptr) {
+      winner(nullptr),
+      hasDrawn(false),
+      lastDrawCount(0) {
     for (int i = 0; i < seats.size(); ++i) {
         Player* player = nullptr;
         seats.get(i, player);
@@ -115,29 +119,24 @@ void Round::moveTurnAfter(const Card& card) {
     }
 }
 
-void Round::start() {
-    penaltyStack.clear();
-    pendingPenalty = 0;
-    activeColor = CardColor::None;
-    awaitingStartColor = false;
-    roundOver = false;
-    winner = nullptr;
-    discardPile.clear();
+void Round::endTurn() {
+    Player* player = turns.getCurrentPlayer();
 
-    for (int i = 0; i < turns.size(); ++i) {
-        turns.getSeat(i)->clearHand();
+    if (player != nullptr) {
+        player->sortHand();
     }
 
-    deck.build();
-    dealCards();
-    placeFirstCard();
-
-    for (int i = 0; i < turns.size(); ++i) {
-        turns.getSeat(i)->sortHand();
-    }
+    hasDrawn = false;
+    turns.advanceTurn(1);
 }
 
-MoveResult Round::playCard(int cardIndex, CardColor chosenColor) {
+bool Round::topIsPlusFour() const {
+    Card top;
+
+    return discardPile.peek(top) && top.getType() == CardType::WildDrawFour;
+}
+
+MoveResult Round::executePlay(int cardIndex, CardColor chosenColor) {
     if (roundOver) {
         return MoveResult::RoundOver;
     }
@@ -181,6 +180,8 @@ MoveResult Round::playCard(int cardIndex, CardColor chosenColor) {
         pendingPenalty += penalty;
     }
 
+    hasDrawn = false;
+
     if (player->getHandSize() == 0) {
         roundOver = true;
         winner = player;
@@ -191,6 +192,170 @@ MoveResult Round::playCard(int cardIndex, CardColor chosenColor) {
     moveTurnAfter(card);
 
     return MoveResult::Ok;
+}
+
+void Round::start() {
+    penaltyStack.clear();
+    pendingPenalty = 0;
+    activeColor = CardColor::None;
+    awaitingStartColor = false;
+    roundOver = false;
+    winner = nullptr;
+    hasDrawn = false;
+    lastDrawCount = 0;
+    discardPile.clear();
+
+    for (int i = 0; i < turns.size(); ++i) {
+        turns.getSeat(i)->clearHand();
+    }
+
+    deck.build();
+    dealCards();
+    placeFirstCard();
+
+    for (int i = 0; i < turns.size(); ++i) {
+        turns.getSeat(i)->sortHand();
+    }
+}
+
+MoveResult Round::playCard(int cardIndex, CardColor chosenColor) {
+    if (hasDrawn) {
+        return MoveResult::NotAllowed;
+    }
+
+    return executePlay(cardIndex, chosenColor);
+}
+
+MoveResult Round::draw() {
+    if (roundOver) {
+        return MoveResult::RoundOver;
+    }
+
+    if (awaitingStartColor) {
+        return MoveResult::AwaitingStartColor;
+    }
+
+    if (hasDrawn) {
+        return MoveResult::NotAllowed;
+    }
+
+    Player* player = turns.getCurrentPlayer();
+    lastDrawCount = 0;
+
+    if (pendingPenalty > 0) {
+        int amount = sumPenalty(penaltyStack);
+        pendingPenalty = 0;
+
+        lastDrawCount = drawInto(player, amount);
+        endTurn();
+
+        return MoveResult::Ok;
+    }
+
+    lastDrawCount = drawInto(player, 1);
+
+    if (lastDrawCount == 0) {
+        endTurn();
+        return MoveResult::Ok;
+    }
+
+    Card drawn;
+    player->getCard(player->getHandSize() - 1, drawn);
+
+    Card topCard;
+    discardPile.peek(topCard);
+
+    if (RuleManager::isValidPlay(drawn, topCard, activeColor,
+                                 player->getHand(), penaltyStack)) {
+        hasDrawn = true;
+    } else {
+        endTurn();
+    }
+
+    return MoveResult::Ok;
+}
+
+MoveResult Round::playDrawn(CardColor chosenColor) {
+    if (roundOver) {
+        return MoveResult::RoundOver;
+    }
+
+    if (!hasDrawn) {
+        return MoveResult::NotAllowed;
+    }
+
+    Player* player = turns.getCurrentPlayer();
+
+    return executePlay(player->getHandSize() - 1, chosenColor);
+}
+
+MoveResult Round::pass() {
+    if (roundOver) {
+        return MoveResult::RoundOver;
+    }
+
+    if (!hasDrawn) {
+        return MoveResult::NotAllowed;
+    }
+
+    endTurn();
+
+    return MoveResult::Ok;
+}
+
+MoveResult Round::chanceWithRoll(int roll) {
+    if (roundOver) {
+        return MoveResult::RoundOver;
+    }
+
+    if (awaitingStartColor) {
+        return MoveResult::AwaitingStartColor;
+    }
+
+    if (pendingPenalty <= 0) {
+        return MoveResult::NotAllowed;
+    }
+
+    int cards = chanceMachine.spinWithRoll(topIsPlusFour(), roll);
+
+    if (cards < 0) {
+        return MoveResult::InvalidMove;
+    }
+
+    Player* player = turns.getCurrentPlayer();
+
+    penaltyStack.clear();
+    pendingPenalty = 0;
+
+    lastDrawCount = drawInto(player, cards);
+    endTurn();
+
+    return MoveResult::Ok;
+}
+
+MoveResult Round::chance() {
+    int total = chanceMachine.totalWeight(topIsPlusFour());
+
+    return chanceWithRoll(randomInt(total));
+}
+
+MoveResult Round::applyAction(const Action& action) {
+    switch (action.type) {
+        case ActionType::Play:
+            return playCard(action.cardIndex, action.color);
+        case ActionType::Draw:
+            return draw();
+        case ActionType::PlayDrawn:
+            return playDrawn(action.color);
+        case ActionType::Pass:
+            return pass();
+        case ActionType::Chance:
+            return chance();
+        case ActionType::None:
+            return MoveResult::NotAllowed;
+    }
+
+    return MoveResult::NotAllowed;
 }
 
 bool Round::setStartColor(CardColor color) {
@@ -217,6 +382,14 @@ void Round::setTopCard(const Card& card) {
     discardPile.push(card);
     activeColor = card.getColor();
     awaitingStartColor = false;
+}
+
+void Round::leaveOneCardInDeck() {
+    Card card;
+
+    while (deck.size() > 1) {
+        deck.drawCard(card, discardPile);
+    }
 }
 
 Player* Round::getCurrentPlayer() const {
@@ -259,10 +432,29 @@ bool Round::needsStartColor() const {
     return awaitingStartColor;
 }
 
+bool Round::hasDrawnCard() const {
+    return hasDrawn;
+}
+
+int Round::getLastDrawCount() const {
+    return lastDrawCount;
+}
+
 bool Round::isOver() const {
     return roundOver;
 }
 
 Player* Round::getWinner() const {
     return winner;
+}
+
+RoundState Round::getState() const {
+    RoundState state;
+
+    discardPile.peek(state.topCard);
+    state.activeColor = activeColor;
+    state.pendingPenalty = pendingPenalty;
+    state.hasDrawn = hasDrawn;
+
+    return state;
 }
