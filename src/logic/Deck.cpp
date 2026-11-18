@@ -87,6 +87,20 @@ bool Deck::drawCard(Card& result, DiscardPile& discardPile) {
     return drawQueue.dequeue(result);
 }
 
+void Deck::returnAndReshuffle(const Card& card) {
+    DynamicArray<Card> cards;
+    Card current;
+
+    while (drawQueue.dequeue(current)) {
+        cards.add(current);
+    }
+
+    cards.add(card);
+
+    shuffleCards(cards);
+    enqueueAll(cards);
+}
+
 void Deck::clear() {
     drawQueue.clear();
 }

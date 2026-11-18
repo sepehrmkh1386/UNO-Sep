@@ -32,6 +32,7 @@ public:
     bool isEmpty() const;
     int size() const;
     bool drawCard(Card& result, DiscardPile& discardPile);
+    void returnAndReshuffle(const Card& card);
     void clear();
 };
 
