@@ -61,6 +61,12 @@ public:
             ++wins;
         }
     }
+
+    void restoreStats(int score, int winCount, int gameCount) {
+        totalScore = score;
+        wins = winCount;
+        gamesPlayed = gameCount;
+    }
 };
 
 #endif
