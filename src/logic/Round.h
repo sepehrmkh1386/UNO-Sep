@@ -34,6 +34,7 @@ private:
     Player* winner;
     bool hasDrawn;
     int lastDrawCount;
+    Card lastDrawn;
     ChanceMachine chanceMachine;
 
     int drawInto(Player* player, int count);
@@ -62,7 +63,11 @@ public:
 
     bool setStartColor(CardColor color);
     void setTopCard(const Card& card);
+
+    bool cheatGive(const Card& card);
+    void cheatSetTop(const Card& card);
     void leaveOneCardInDeck();
+    bool cheatWinRound();
 
     Player* getCurrentPlayer() const;
     Player* getPlayerAt(int seat) const;
@@ -76,6 +81,7 @@ public:
     bool needsStartColor() const;
     bool hasDrawnCard() const;
     int getLastDrawCount() const;
+    bool getLastDrawnCard(Card& result) const;
     bool isOver() const;
     Player* getWinner() const;
     RoundState getState() const;

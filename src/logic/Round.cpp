@@ -9,7 +9,8 @@ Round::Round(const DynamicArray<Player*>& seats)
       roundOver(false),
       winner(nullptr),
       hasDrawn(false),
-      lastDrawCount(0) {
+      lastDrawCount(0),
+      lastDrawn() {
     for (int i = 0; i < seats.size(); ++i) {
         Player* player = nullptr;
         seats.get(i, player);
@@ -28,6 +29,7 @@ int Round::drawInto(Player* player, int count) {
         }
 
         player->addCard(card);
+        lastDrawn = card;
         ++drawn;
     }
 
@@ -384,12 +386,58 @@ void Round::setTopCard(const Card& card) {
     awaitingStartColor = false;
 }
 
+bool Round::cheatGive(const Card& card) {
+    Player* player = turns.getCurrentPlayer();
+
+    if (player == nullptr || roundOver || hasDrawn) {
+        return false;
+    }
+
+    player->addCard(card);
+    return true;
+}
+
+void Round::cheatSetTop(const Card& card) {
+    Card old;
+
+    discardPile.pop(old);
+    setTopCard(card);
+}
+
 void Round::leaveOneCardInDeck() {
+    Card top;
+    bool hasTop = discardPile.pop(top);
     Card card;
 
     while (deck.size() > 1) {
         deck.drawCard(card, discardPile);
+        discardPile.push(card);
     }
+
+    if (hasTop) {
+        discardPile.push(top);
+    }
+}
+
+bool Round::cheatWinRound() {
+    Player* player = turns.getCurrentPlayer();
+
+    if (player == nullptr || roundOver) {
+        return false;
+    }
+
+    Card removed;
+
+    while (player->getHandSize() > 1) {
+        player->removeCard(1, removed);
+    }
+
+    awaitingStartColor = false;
+    hasDrawn = false;
+    roundOver = true;
+    winner = player;
+
+    return true;
 }
 
 Player* Round::getCurrentPlayer() const {
@@ -438,6 +486,15 @@ bool Round::hasDrawnCard() const {
 
 int Round::getLastDrawCount() const {
     return lastDrawCount;
+}
+
+bool Round::getLastDrawnCard(Card& result) const {
+    if (lastDrawCount <= 0) {
+        return false;
+    }
+
+    result = lastDrawn;
+    return true;
 }
 
 bool Round::isOver() const {
