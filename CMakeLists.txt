@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.16)
+
+cmake_minimum_required(VERSION 3.22)
 
 project(UNO_DataStructure LANGUAGES CXX)
 
@@ -6,8 +7,22 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-file(GLOB_RECURSE UNO_SOURCES CONFIGURE_DEPENDS src/*.cpp)
+set(CMAKE_AUTOMOC ON)
+
+find_package(Qt6 REQUIRED COMPONENTS Widgets)
+
+file(GLOB_RECURSE UNO_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+)
+
+file(GLOB_RECURSE UNO_HEADERS CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp"
+)
 
 add_executable(uno
     ${UNO_SOURCES}
+    ${UNO_HEADERS}
 )
+
+target_link_libraries(uno PRIVATE Qt6::Widgets)

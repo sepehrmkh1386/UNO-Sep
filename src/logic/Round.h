@@ -53,6 +53,7 @@ public:
 
     void start();
 
+    bool canPlayCard(int cardIndex) const;
     MoveResult playCard(int cardIndex, CardColor chosenColor);
     MoveResult draw();
     MoveResult playDrawn(CardColor chosenColor);

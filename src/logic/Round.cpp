@@ -220,6 +220,36 @@ void Round::start() {
     }
 }
 
+bool Round::canPlayCard(int cardIndex) const {
+    if (roundOver || awaitingStartColor || hasDrawn) {
+        return false;
+    }
+
+    Player* player = turns.getCurrentPlayer();
+
+    if (player == nullptr) {
+        return false;
+    }
+
+    Card card;
+    if (!player->getCard(cardIndex, card)) {
+        return false;
+    }
+
+    Card topCard;
+    if (!discardPile.peek(topCard)) {
+        return false;
+    }
+
+    return RuleManager::isValidPlay(
+        card,
+        topCard,
+        activeColor,
+        player->getHand(),
+        penaltyStack
+    );
+}
+
 MoveResult Round::playCard(int cardIndex, CardColor chosenColor) {
     if (hasDrawn) {
         return MoveResult::NotAllowed;
